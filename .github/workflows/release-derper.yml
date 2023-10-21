@@ -1,0 +1,62 @@
+name: release derper
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1 * *
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  cross:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: linux-amd64
+            goos: linux
+            goarch: amd64
+            goamd64: v1
+          - name: linux-amd64-v3
+            goos: linux
+            goarch: amd64
+            goamd64: v3
+          - name: linux-arm64
+            goos: linux
+            goarch: arm64
+
+      fail-fast: false
+    steps:
+      - name: Set variables
+        run: |
+          echo "RELEASE_NAME=Released on $(date +%Y%m%d%H)" >> $GITHUB_ENV
+          echo "TAG_NAME=$(date +%Y%m%d%H)" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: tailscale/tailscale
+          ref: main
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 'stable'
+      - name: Build
+        run: |
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.platform }} go build -a -o derper-${{ matrix.name }} -v ./cmd/derper
+      - name: Archive
+        uses: actions/upload-artifact@v3
+        with:
+          name: derper-${{ matrix.name }}
+          path: derper-*
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.RELEASE_NAME }}
+          files: |
+            derper-*
