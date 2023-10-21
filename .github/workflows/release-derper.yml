@@ -8,9 +8,11 @@ on:
   schedule:
     - cron: "0 0 1 * *"
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   cross:
@@ -29,37 +31,52 @@ jobs:
           - name: linux-arm64
             goos: linux
             goarch: arm64
-
       fail-fast: false
+    env:
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+      GOAMD64: ${{ matrix.goamd64 }}
+      CGO_ENABLED: 0
     steps:
       - name: Set variables
         run: |
           echo "RELEASE_NAME=Released on $(date +%Y%m%d%H)" >> $GITHUB_ENV
           echo "TAG_NAME=$(date +%Y%m%d%H)" >> $GITHUB_ENV
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           repository: tailscale/tailscale
           ref: main
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: 'stable'
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Build
         run: |
-          CGO_ENABLED=0 \
-          GOOS=${{ matrix.goos }} \
-          GOARCH=${{ matrix.goarch }} \
           go build -a -o derper-${{ matrix.name }} -v ./cmd/derper
+
       - name: Archive
         uses: actions/upload-artifact@v3
         with:
           name: derper-${{ matrix.name }}
           path: derper-*
+
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.TAG_NAME }}
           name: ${{ env.RELEASE_NAME }}
+          tag_name: ${{ env.TAG_NAME }}
           files: |
             derper-*
