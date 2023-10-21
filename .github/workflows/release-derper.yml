@@ -47,7 +47,7 @@ jobs:
           go-version: 'stable'
       - name: Build
         run: |
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.platform }} go build -a -o derper-${{ matrix.name }} -v ./cmd/derper
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -a -o derper-${{ matrix.name }} -v ./cmd/derper
       - name: Archive
         uses: actions/upload-artifact@v3
         with:
